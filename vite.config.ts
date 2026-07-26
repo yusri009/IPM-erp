@@ -12,8 +12,8 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['icon.svg'],
       manifest: {
-        name: 'IPM ERP',
-        short_name: 'IPM ERP',
+        name: 'IPM Cash',
+        short_name: 'IPM Cash',
         description: 'Cash Flow & Vendor Management System',
         theme_color: '#18181b', // zinc-950
         background_color: '#18181b',

@@ -38,6 +38,16 @@ export interface DailyRevenue {
   created_at: string;
 }
 
+export interface Expense {
+  id: string;
+  tenant_id: string;
+  date: string;
+  amount: number;
+  category: string | null;
+  notes: string | null;
+  created_at: string;
+}
+
 export interface WholesaleVendor {
   id: string;
   tenant_id: string;
@@ -85,6 +95,20 @@ export interface DailyRevenueUpdate {
   notes?: string;
 }
 
+export interface ExpenseInsert {
+  tenant_id: string;
+  date: string;
+  amount: number;
+  category?: string;
+  notes?: string;
+}
+
+export interface ExpenseUpdate {
+  amount?: number;
+  category?: string;
+  notes?: string;
+}
+
 export interface WholesaleVendorInsert {
   tenant_id: string;
   name: string;
@@ -124,6 +148,7 @@ export interface DashboardSummary {
   totalRevenue: number;
   totalCleared: number;
   totalCashPayments: number;
+  totalExpenses: number;
   availableCash: number;
   totalPending: number;
 }

@@ -6,6 +6,7 @@ import { Modal } from '@/components/Modal';
 import { useDashboardSummary } from '@/hooks/useDashboard';
 import { useRevenue, useAddRevenue } from '@/hooks/useRevenue';
 import { useCheques, useIssueCheque } from '@/hooks/useCheques';
+import { useAddExpense } from '@/hooks/useExpenses';
 
 function formatCurrency(amount: number): string {
   return new Intl.NumberFormat('en-IN', {
@@ -25,6 +26,7 @@ export default function Dashboard() {
   const { data: pendingCheques, isLoading: chequesLoading } = useCheques('Pending');
   const { data: revenueHistory, isLoading: revenueHistoryLoading } = useRevenue();
   const addRevenue = useAddRevenue();
+  const addExpense = useAddExpense();
   const issueCheque = useIssueCheque();
 
   const todaysChequesTotal = pendingCheques
@@ -35,10 +37,13 @@ export default function Dashboard() {
   const [isRevModalOpen, setIsRevModalOpen] = useState(false);
   const [isChqModalOpen, setIsChqModalOpen] = useState(false);
 
-  // ── Revenue form state ──
+  // ── Revenue & Expense form state ──
   const [revDate, setRevDate] = useState(todayISO());
   const [revAmount, setRevAmount] = useState('');
   const [revNotes, setRevNotes] = useState('');
+  
+  const [expAmount, setExpAmount] = useState('');
+  const [expCategory, setExpCategory] = useState('');
 
   // ── Issue cheque form state ──
   const [chqDate, setChqDate] = useState(todayISO());
@@ -66,21 +71,36 @@ export default function Dashboard() {
       .sort((a, b) => a.fullDate.localeCompare(b.fullDate));
   }, [revenueHistory]);
 
-  const handleAddRevenue = (e: FormEvent) => {
+  const handleAddRevenue = async (e: FormEvent) => {
     e.preventDefault();
-    if (!revAmount) return;
+    if (!revAmount && !expAmount) return;
 
-    addRevenue.mutate(
-      { date: revDate, amount: parseFloat(revAmount), notes: revNotes || undefined },
-      {
-        onSuccess: () => {
-          setRevAmount('');
-          setRevNotes('');
-          setRevDate(todayISO());
-          setIsRevModalOpen(false);
-        },
+    try {
+      if (revAmount) {
+        await addRevenue.mutateAsync({ 
+          date: revDate, 
+          amount: parseFloat(revAmount), 
+          notes: revNotes || undefined 
+        });
       }
-    );
+      if (expAmount) {
+        await addExpense.mutateAsync({
+          date: revDate,
+          amount: parseFloat(expAmount),
+          category: expCategory || undefined,
+          notes: 'Logged with Daily Revenue'
+        });
+      }
+      
+      setRevAmount('');
+      setRevNotes('');
+      setExpAmount('');
+      setExpCategory('');
+      setRevDate(todayISO());
+      setIsRevModalOpen(false);
+    } catch (err) {
+      console.error('Failed to log daily records:', err);
+    }
   };
 
   const handleIssueCheque = (e: FormEvent) => {
@@ -255,7 +275,7 @@ export default function Dashboard() {
             </div>
           </div>
           <div>
-            <label className="mb-1.5 block text-xs font-medium text-zinc-500 dark:text-zinc-400">Notes (optional)</label>
+            <label className="mb-1.5 block text-xs font-medium text-zinc-500 dark:text-zinc-400">Revenue Notes (optional)</label>
             <input
               type="text"
               className="input"
@@ -264,15 +284,42 @@ export default function Dashboard() {
               onChange={(e) => setRevNotes(e.target.value)}
             />
           </div>
+          <div className="pt-4 border-t border-zinc-200 dark:border-zinc-800">
+            <h3 className="mb-4 text-sm font-semibold text-zinc-900 dark:text-zinc-200">Optional: Log Today's Expenses</h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="mb-1.5 block text-xs font-medium text-zinc-500 dark:text-zinc-400">Expense Amount (Rs.)</label>
+                <input
+                  type="number"
+                  className="input"
+                  placeholder="0.00"
+                  min="0"
+                  step="0.01"
+                  value={expAmount}
+                  onChange={(e) => setExpAmount(e.target.value)}
+                />
+              </div>
+              <div>
+                <label className="mb-1.5 block text-xs font-medium text-zinc-500 dark:text-zinc-400">Expense Category</label>
+                <input
+                  type="text"
+                  className="input"
+                  placeholder="e.g. Labour, Transport"
+                  value={expCategory}
+                  onChange={(e) => setExpCategory(e.target.value)}
+                />
+              </div>
+            </div>
+          </div>
           <button
             type="submit"
             className="btn btn-primary w-full"
-            disabled={addRevenue.isPending}
+            disabled={addRevenue.isPending || addExpense.isPending}
           >
-            {addRevenue.isPending ? (
+            {(addRevenue.isPending || addExpense.isPending) ? (
               <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
             ) : null}
-            {addRevenue.isPending ? 'Saving…' : 'Add Revenue'}
+            {(addRevenue.isPending || addExpense.isPending) ? 'Saving…' : 'Save Records'}
           </button>
         </form>
       </Modal>

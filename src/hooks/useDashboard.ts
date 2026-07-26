@@ -14,8 +14,8 @@ export function useDashboardSummary() {
   return useQuery({
     queryKey: dashboardKeys.summary(tenantId),
     queryFn: async (): Promise<DashboardSummary> => {
-      // Fetch all three data sources in parallel
-      const [revenueRes, chequesRes, cashPaymentsRes] = await Promise.all([
+      // Fetch all four data sources in parallel
+      const [revenueRes, chequesRes, cashPaymentsRes, expensesRes] = await Promise.all([
         supabase.from('daily_revenue').select('amount').eq('tenant_id', tenantId),
         supabase.from('outbound_cheques').select('amount, status').eq('tenant_id', tenantId),
         supabase
@@ -24,11 +24,13 @@ export function useDashboardSummary() {
           .eq('type', 'Payment')
           .eq('payment_method', 'Cash')
           .eq('tenant_id', tenantId),
+        supabase.from('expenses').select('amount').eq('tenant_id', tenantId),
       ]);
 
       if (revenueRes.error) throw revenueRes.error;
       if (chequesRes.error) throw chequesRes.error;
       if (cashPaymentsRes.error) throw cashPaymentsRes.error;
+      if (expensesRes.error) throw expensesRes.error;
 
       const totalRevenue = (revenueRes.data ?? []).reduce(
         (sum, r) => sum + Number(r.amount),
@@ -48,12 +50,18 @@ export function useDashboardSummary() {
         0
       );
 
-      const availableCash = totalRevenue - totalCleared - totalCashPayments;
+      const totalExpenses = (expensesRes.data ?? []).reduce(
+        (sum, e) => sum + Number(e.amount),
+        0
+      );
+
+      const availableCash = totalRevenue - totalCleared - totalCashPayments - totalExpenses;
 
       return {
         totalRevenue,
         totalCleared,
         totalCashPayments,
+        totalExpenses,
         availableCash,
         totalPending,
       };

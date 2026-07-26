@@ -3,7 +3,7 @@ import { MetricCard } from '@/components/MetricCard';
 import { StatusBadge } from '@/components/StatusBadge';
 import { useDashboardSummary } from '@/hooks/useDashboard';
 import { useAddRevenue } from '@/hooks/useRevenue';
-import { useCheques, useClearCheque, useIssueCheque } from '@/hooks/useCheques';
+import { useCheques, useIssueCheque } from '@/hooks/useCheques';
 
 function formatCurrency(amount: number): string {
   return new Intl.NumberFormat('en-IN', {
@@ -22,7 +22,6 @@ export default function Dashboard() {
   const { data: summary, isLoading: summaryLoading } = useDashboardSummary();
   const { data: pendingCheques, isLoading: chequesLoading } = useCheques('Pending');
   const addRevenue = useAddRevenue();
-  const clearCheque = useClearCheque();
   const issueCheque = useIssueCheque();
 
   const todaysChequesTotal = pendingCheques

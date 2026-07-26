@@ -173,9 +173,8 @@ export default function Vendors() {
                     <td className="font-medium text-zinc-900 dark:text-zinc-200">{vendor.name}</td>
                     <td>
                       <span
-                        className={`font-semibold ${
-                          vendor.balance_owed > 0 ? 'text-rose-400' : 'text-emerald-400'
-                        }`}
+                        className={`font-semibold ${vendor.balance_owed > 0 ? 'text-rose-400' : 'text-emerald-400'
+                          }`}
                       >
                         {formatCurrency(vendor.balance_owed)}
                       </span>
@@ -254,9 +253,8 @@ export default function Vendors() {
                       </td>
                       <td className="text-zinc-600 dark:text-zinc-400">{tx.payment_method ?? '—'}</td>
                       <td
-                        className={`font-semibold ${
-                          tx.type === 'Invoice' ? 'text-rose-400' : 'text-emerald-400'
-                        }`}
+                        className={`font-semibold ${tx.type === 'Invoice' ? 'text-rose-400' : 'text-emerald-400'
+                          }`}
                       >
                         {tx.type === 'Invoice' ? '+' : '-'}
                         {formatCurrency(tx.amount)}
@@ -278,7 +276,7 @@ export default function Vendors() {
         title={`Record Invoice — ${invoiceVendor?.name ?? ''}`}
       >
         <form onSubmit={handleRecordInvoice} className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="mb-1.5 block text-xs font-medium text-zinc-500 dark:text-zinc-400">Date</label>
               <input
@@ -290,7 +288,7 @@ export default function Vendors() {
               />
             </div>
             <div>
-              <label className="mb-1.5 block text-xs font-medium text-zinc-500 dark:text-zinc-400">Amount (₹)</label>
+              <label className="mb-1.5 block text-xs font-medium text-zinc-500 dark:text-zinc-400">Amount (Rs.)</label>
               <input
                 type="number"
                 className="input"
@@ -349,7 +347,7 @@ export default function Vendors() {
             </div>
           )}
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="mb-1.5 block text-xs font-medium text-zinc-500 dark:text-zinc-400">Date</label>
               <input
@@ -361,7 +359,7 @@ export default function Vendors() {
               />
             </div>
             <div>
-              <label className="mb-1.5 block text-xs font-medium text-zinc-500 dark:text-zinc-400">Amount (₹)</label>
+              <label className="mb-1.5 block text-xs font-medium text-zinc-500 dark:text-zinc-400">Amount (Rs.)</label>
               <input
                 type="number"
                 className="input"
@@ -378,25 +376,23 @@ export default function Vendors() {
           {/* Payment method toggle */}
           <div>
             <label className="mb-2 block text-xs font-medium text-zinc-500 dark:text-zinc-400">Payment Method</label>
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               <button
                 type="button"
-                className={`rounded-lg border px-4 py-2.5 text-sm font-medium transition-all ${
-                  paymentMethod === 'Cash'
+                className={`rounded-lg border px-4 py-2.5 text-sm font-medium transition-all ${paymentMethod === 'Cash'
                     ? 'border-emerald-500/50 bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400 shadow-sm dark:shadow-[0_0_12px_oklch(0.72_0.19_160/0.1)]'
                     : 'border-zinc-200 bg-zinc-50 text-zinc-600 hover:border-zinc-300 dark:border-zinc-700 dark:bg-zinc-800/50 dark:text-zinc-400 dark:hover:border-zinc-600'
-                }`}
+                  }`}
                 onClick={() => setPaymentMethod('Cash')}
               >
                 💵 Direct Cash
               </button>
               <button
                 type="button"
-                className={`rounded-lg border px-4 py-2.5 text-sm font-medium transition-all ${
-                  paymentMethod === 'Cheque'
+                className={`rounded-lg border px-4 py-2.5 text-sm font-medium transition-all ${paymentMethod === 'Cheque'
                     ? 'border-amber-500/50 bg-amber-50 text-amber-600 dark:bg-amber-500/10 dark:text-amber-400 shadow-sm dark:shadow-[0_0_12px_oklch(0.8_0.16_85/0.1)]'
                     : 'border-zinc-200 bg-zinc-50 text-zinc-600 hover:border-zinc-300 dark:border-zinc-700 dark:bg-zinc-800/50 dark:text-zinc-400 dark:hover:border-zinc-600'
-                }`}
+                  }`}
                 onClick={() => setPaymentMethod('Cheque')}
               >
                 📝 Cheque

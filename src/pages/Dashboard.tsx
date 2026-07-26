@@ -1,14 +1,16 @@
-import { useState, type FormEvent } from 'react';
+import { useState, useMemo, type FormEvent } from 'react';
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { MetricCard } from '@/components/MetricCard';
 import { StatusBadge } from '@/components/StatusBadge';
+import { Modal } from '@/components/Modal';
 import { useDashboardSummary } from '@/hooks/useDashboard';
-import { useAddRevenue } from '@/hooks/useRevenue';
+import { useRevenue, useAddRevenue } from '@/hooks/useRevenue';
 import { useCheques, useIssueCheque } from '@/hooks/useCheques';
 
 function formatCurrency(amount: number): string {
   return new Intl.NumberFormat('en-IN', {
     style: 'currency',
-    currency: 'INR',
+    currency: 'LKR',
     minimumFractionDigits: 0,
     maximumFractionDigits: 2,
   }).format(amount);
@@ -21,12 +23,17 @@ function todayISO(): string {
 export default function Dashboard() {
   const { data: summary, isLoading: summaryLoading } = useDashboardSummary();
   const { data: pendingCheques, isLoading: chequesLoading } = useCheques('Pending');
+  const { data: revenueHistory, isLoading: revenueHistoryLoading } = useRevenue();
   const addRevenue = useAddRevenue();
   const issueCheque = useIssueCheque();
 
   const todaysChequesTotal = pendingCheques
     ?.filter((c) => c.date === todayISO())
     .reduce((sum, c) => sum + c.amount, 0) ?? 0;
+
+  // ── Modal State ──
+  const [isRevModalOpen, setIsRevModalOpen] = useState(false);
+  const [isChqModalOpen, setIsChqModalOpen] = useState(false);
 
   // ── Revenue form state ──
   const [revDate, setRevDate] = useState(todayISO());
@@ -39,6 +46,26 @@ export default function Dashboard() {
   const [chqNumber, setChqNumber] = useState('');
   const [chqAmount, setChqAmount] = useState('');
 
+  // ── Chart Data ──
+  const chartData = useMemo(() => {
+    if (!revenueHistory) return [];
+
+    // Group by date
+    const grouped = revenueHistory.reduce((acc, curr) => {
+      acc[curr.date] = (acc[curr.date] || 0) + curr.amount;
+      return acc;
+    }, {} as Record<string, number>);
+
+    // Convert to array and sort by date ascending
+    return Object.entries(grouped)
+      .map(([date, amount]) => ({
+        date: new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+        fullDate: date,
+        amount
+      }))
+      .sort((a, b) => a.fullDate.localeCompare(b.fullDate));
+  }, [revenueHistory]);
+
   const handleAddRevenue = (e: FormEvent) => {
     e.preventDefault();
     if (!revAmount) return;
@@ -50,6 +77,7 @@ export default function Dashboard() {
           setRevAmount('');
           setRevNotes('');
           setRevDate(todayISO());
+          setIsRevModalOpen(false);
         },
       }
     );
@@ -72,6 +100,7 @@ export default function Dashboard() {
           setChqNumber('');
           setChqAmount('');
           setChqDate(todayISO());
+          setIsChqModalOpen(false);
         },
       }
     );
@@ -131,132 +160,186 @@ export default function Dashboard() {
         />
       </div>
 
-      {/* ── Forms Row ── */}
+      {/* ── Quick Actions ── */}
       <div className="grid gap-6 lg:grid-cols-2">
-        {/* ── Add Revenue Form ── */}
-        <div className="glass-card animate-fade-in-up p-6">
-          <h2 className="mb-4 text-base font-semibold text-zinc-900 dark:text-zinc-200">
-            <span className="mr-2 inline-block h-2 w-2 rounded-full bg-emerald-400" />
-            Log Daily Revenue
-          </h2>
-          <form onSubmit={handleAddRevenue} className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="mb-1.5 block text-xs font-medium text-zinc-500 dark:text-zinc-400">Date</label>
-                <input
-                  type="date"
-                  className="input"
-                  value={revDate}
-                  onChange={(e) => setRevDate(e.target.value)}
-                  required
+        <button
+          onClick={() => setIsRevModalOpen(true)}
+          className="glass-card animate-fade-in-up flex flex-col items-center justify-center gap-3 p-5 transition-all duration-300 hover:scale-[1.02] hover:-translate-y-1 hover:bg-zinc-100/50 hover:shadow-lg hover:shadow-emerald-500/10 dark:hover:bg-zinc-800/50 active:scale-[0.98]"
+        >
+          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-500">
+            <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v12m-3-2.818l.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.9-.879 4.006 0l.415.33M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          </div>
+          <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-200">Log Daily Revenue</h2>
+          <p className="text-xs text-zinc-500 dark:text-zinc-400">Record cash & digital sales for today</p>
+        </button>
+
+        <button
+          onClick={() => setIsChqModalOpen(true)}
+          className="glass-card animate-fade-in-up flex flex-col items-center justify-center gap-3 p-5 transition-all duration-300 hover:scale-[1.02] hover:-translate-y-1 hover:bg-zinc-100/50 hover:shadow-lg hover:shadow-amber-500/10 dark:hover:bg-zinc-800/50 active:scale-[0.98]"
+        >
+          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-amber-500/10 text-amber-500">
+            <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 8.25h19.5M2.25 9h19.5m-16.5 5.25h6m-6 2.25h3m-3.75 3h15a2.25 2.25 0 002.25-2.25V6.75A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25v10.5A2.25 2.25 0 004.5 19.5z" />
+            </svg>
+          </div>
+          <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-200">Issue General Cheque</h2>
+          <p className="text-xs text-zinc-500 dark:text-zinc-400">Record an outgoing cheque payment</p>
+        </button>
+      </div>
+
+      {/* ── Revenue Chart ── */}
+      <div className="glass-card animate-fade-in-up p-6">
+        <h2 className="mb-4 text-base font-semibold text-zinc-900 dark:text-zinc-200">
+          <span className="mr-2 inline-block h-2 w-2 rounded-full bg-blue-500" />
+          Revenue Trend
+        </h2>
+        <div className="h-[300px] w-full">
+          {revenueHistoryLoading ? (
+            <div className="flex h-full items-center justify-center">
+              <span className="inline-block h-6 w-6 animate-spin rounded-full border-2 border-zinc-600 border-t-zinc-300" />
+            </div>
+          ) : chartData.length === 0 ? (
+            <div className="flex h-full items-center justify-center text-sm text-zinc-500">
+              No revenue data available.
+            </div>
+          ) : (
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                <defs>
+                  <linearGradient id="colorAmount" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#10b981" stopOpacity={0.3} />
+                    <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.1)" />
+                <XAxis dataKey="date" tick={{ fill: '#71717a', fontSize: 12 }} tickLine={false} axisLine={false} />
+                <YAxis tick={{ fill: '#71717a', fontSize: 12 }} tickLine={false} axisLine={false} tickFormatter={(val) => `Rs.${val}`} />
+                <Tooltip
+                  contentStyle={{ backgroundColor: 'rgba(24, 24, 27, 0.9)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px' }}
+                  itemStyle={{ color: '#10b981' }}
                 />
-              </div>
-              <div>
-                <label className="mb-1.5 block text-xs font-medium text-zinc-500 dark:text-zinc-400">Amount (₹)</label>
-                <input
-                  type="number"
-                  className="input"
-                  placeholder="0.00"
-                  min="0"
-                  step="0.01"
-                  value={revAmount}
-                  onChange={(e) => setRevAmount(e.target.value)}
-                  required
-                />
-              </div>
+                <Area type="monotone" dataKey="amount" stroke="#10b981" strokeWidth={2} fillOpacity={1} fill="url(#colorAmount)" />
+              </AreaChart>
+            </ResponsiveContainer>
+          )}
+        </div>
+      </div>
+
+      <Modal open={isRevModalOpen} onClose={() => setIsRevModalOpen(false)} title="Log Daily Revenue">
+        <form onSubmit={handleAddRevenue} className="space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="mb-1.5 block text-xs font-medium text-zinc-500 dark:text-zinc-400">Date</label>
+              <input
+                type="date"
+                className="input"
+                value={revDate}
+                onChange={(e) => setRevDate(e.target.value)}
+                required
+              />
             </div>
             <div>
-              <label className="mb-1.5 block text-xs font-medium text-zinc-500 dark:text-zinc-400">Notes (optional)</label>
+              <label className="mb-1.5 block text-xs font-medium text-zinc-500 dark:text-zinc-400">Amount (Rs.)</label>
+              <input
+                type="number"
+                className="input"
+                placeholder="0.00"
+                min="0"
+                step="0.01"
+                value={revAmount}
+                onChange={(e) => setRevAmount(e.target.value)}
+                required
+              />
+            </div>
+          </div>
+          <div>
+            <label className="mb-1.5 block text-xs font-medium text-zinc-500 dark:text-zinc-400">Notes (optional)</label>
+            <input
+              type="text"
+              className="input"
+              placeholder="e.g. Festival day, extra footfall"
+              value={revNotes}
+              onChange={(e) => setRevNotes(e.target.value)}
+            />
+          </div>
+          <button
+            type="submit"
+            className="btn btn-primary w-full"
+            disabled={addRevenue.isPending}
+          >
+            {addRevenue.isPending ? (
+              <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+            ) : null}
+            {addRevenue.isPending ? 'Saving…' : 'Add Revenue'}
+          </button>
+        </form>
+      </Modal>
+
+      <Modal open={isChqModalOpen} onClose={() => setIsChqModalOpen(false)} title="Issue General Cheque">
+        <form onSubmit={handleIssueCheque} className="space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="mb-1.5 block text-xs font-medium text-zinc-500 dark:text-zinc-400">Date</label>
+              <input
+                type="date"
+                className="input"
+                value={chqDate}
+                onChange={(e) => setChqDate(e.target.value)}
+                required
+              />
+            </div>
+            <div>
+              <label className="mb-1.5 block text-xs font-medium text-zinc-500 dark:text-zinc-400">Cheque #</label>
               <input
                 type="text"
                 className="input"
-                placeholder="e.g. Festival day, extra footfall"
-                value={revNotes}
-                onChange={(e) => setRevNotes(e.target.value)}
+                placeholder="e.g. 004521"
+                value={chqNumber}
+                onChange={(e) => setChqNumber(e.target.value)}
+                required
               />
             </div>
-            <button
-              type="submit"
-              className="btn btn-primary w-full"
-              disabled={addRevenue.isPending}
-            >
-              {addRevenue.isPending ? (
-                <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
-              ) : null}
-              {addRevenue.isPending ? 'Saving…' : 'Add Revenue'}
-            </button>
-          </form>
-        </div>
-
-        {/* ── Issue Cheque Form ── */}
-        <div className="glass-card animate-fade-in-up p-6">
-          <h2 className="mb-4 text-base font-semibold text-zinc-900 dark:text-zinc-200">
-            <span className="mr-2 inline-block h-2 w-2 rounded-full bg-amber-400" />
-            Issue General Cheque
-          </h2>
-          <form onSubmit={handleIssueCheque} className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="mb-1.5 block text-xs font-medium text-zinc-500 dark:text-zinc-400">Date</label>
-                <input
-                  type="date"
-                  className="input"
-                  value={chqDate}
-                  onChange={(e) => setChqDate(e.target.value)}
-                  required
-                />
-              </div>
-              <div>
-                <label className="mb-1.5 block text-xs font-medium text-zinc-500 dark:text-zinc-400">Cheque #</label>
-                <input
-                  type="text"
-                  className="input"
-                  placeholder="e.g. 004521"
-                  value={chqNumber}
-                  onChange={(e) => setChqNumber(e.target.value)}
-                  required
-                />
-              </div>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="mb-1.5 block text-xs font-medium text-zinc-500 dark:text-zinc-400">Payee Name</label>
+              <input
+                type="text"
+                className="input"
+                placeholder="e.g. KSEB, Rent"
+                value={chqPayee}
+                onChange={(e) => setChqPayee(e.target.value)}
+                required
+              />
             </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="mb-1.5 block text-xs font-medium text-zinc-500 dark:text-zinc-400">Payee Name</label>
-                <input
-                  type="text"
-                  className="input"
-                  placeholder="e.g. KSEB, Rent"
-                  value={chqPayee}
-                  onChange={(e) => setChqPayee(e.target.value)}
-                  required
-                />
-              </div>
-              <div>
-                <label className="mb-1.5 block text-xs font-medium text-zinc-500 dark:text-zinc-400">Amount (₹)</label>
-                <input
-                  type="number"
-                  className="input"
-                  placeholder="0.00"
-                  min="0.01"
-                  step="0.01"
-                  value={chqAmount}
-                  onChange={(e) => setChqAmount(e.target.value)}
-                  required
-                />
-              </div>
+            <div>
+              <label className="mb-1.5 block text-xs font-medium text-zinc-500 dark:text-zinc-400">Amount (Rs.)</label>
+              <input
+                type="number"
+                className="input"
+                placeholder="0.00"
+                min="0.01"
+                step="0.01"
+                value={chqAmount}
+                onChange={(e) => setChqAmount(e.target.value)}
+                required
+              />
             </div>
-            <button
-              type="submit"
-              className="btn btn-secondary w-full"
-              disabled={issueCheque.isPending}
-            >
-              {issueCheque.isPending ? (
-                <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-zinc-400/30 border-t-zinc-400" />
-              ) : null}
-              {issueCheque.isPending ? 'Issuing…' : 'Issue Cheque'}
-            </button>
-          </form>
-        </div>
-      </div>
+          </div>
+          <button
+            type="submit"
+            className="btn btn-secondary w-full"
+            disabled={issueCheque.isPending}
+          >
+            {issueCheque.isPending ? (
+              <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-zinc-400/30 border-t-zinc-400" />
+            ) : null}
+            {issueCheque.isPending ? 'Issuing…' : 'Issue Cheque'}
+          </button>
+        </form>
+      </Modal>
 
       {/* ── Pending Cheques Table ── */}
       <div className="glass-card animate-fade-in-up overflow-hidden p-6">

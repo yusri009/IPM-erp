@@ -104,6 +104,7 @@ export interface ExpenseInsert {
 }
 
 export interface ExpenseUpdate {
+  date?: string;
   amount?: number;
   category?: string;
   notes?: string;

@@ -1,7 +1,11 @@
 import { useState, type FormEvent } from 'react';
-import { useCheques, useUpdateCheque, useReverseCheque, useClearCheque, useDeleteCheque } from '@/hooks/useCheques';
+import { useCheques, useUpdateCheque, useReverseCheque, useClearCheque, useDeleteCheque, useIssueCheque } from '@/hooks/useCheques';
 import { Modal } from '@/components/Modal';
 import type { OutboundCheque } from '@/lib/types';
+
+function todayISO(): string {
+  return new Date().toISOString().slice(0, 10);
+}
 
 export default function ChequeHistory() {
   const [activeTab, setActiveTab] = useState<'Pending' | 'Cleared'>('Pending');
@@ -12,6 +16,14 @@ export default function ChequeHistory() {
   const reverseCheque = useReverseCheque();
   const clearCheque = useClearCheque();
   const deleteCheque = useDeleteCheque();
+  const issueCheque = useIssueCheque();
+
+  // Issue Modal State
+  const [isIssueModalOpen, setIsIssueModalOpen] = useState(false);
+  const [chqDate, setChqDate] = useState(todayISO());
+  const [chqPayee, setChqPayee] = useState('');
+  const [chqNumber, setChqNumber] = useState('');
+  const [chqAmount, setChqAmount] = useState('');
 
   // Edit Modal State
   const [editingCheque, setEditingCheque] = useState<OutboundCheque | null>(null);
@@ -65,6 +77,29 @@ export default function ChequeHistory() {
     });
   };
 
+  const handleIssueCheque = (e: FormEvent) => {
+    e.preventDefault();
+    if (!chqPayee || !chqNumber || !chqAmount) return;
+
+    issueCheque.mutate(
+      {
+        date: chqDate,
+        payee_name: chqPayee,
+        cheque_number: chqNumber,
+        amount: parseFloat(chqAmount),
+      },
+      {
+        onSuccess: () => {
+          setChqPayee('');
+          setChqNumber('');
+          setChqAmount('');
+          setChqDate(todayISO());
+          setIsIssueModalOpen(false);
+        },
+      }
+    );
+  };
+
   if (isLoading) {
     return (
       <div className="flex h-64 items-center justify-center">
@@ -83,25 +118,37 @@ export default function ChequeHistory() {
           </p>
         </div>
 
-        {/* Tabs */}
-        <div className="flex p-1 bg-zinc-100 dark:bg-zinc-800/60 rounded-lg shrink-0">
+        <div className="flex flex-wrap items-center gap-3">
+          {/* Tabs */}
+          <div className="flex p-1 bg-zinc-100 dark:bg-zinc-800/60 rounded-lg shrink-0">
+            <button
+              onClick={() => setActiveTab('Pending')}
+              className={`px-4 py-1.5 text-sm font-medium rounded-md transition-all ${activeTab === 'Pending'
+                  ? 'bg-white dark:bg-zinc-700 text-zinc-900 dark:text-zinc-100 shadow-sm'
+                  : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-300'
+                }`}
+            >
+              Pending
+            </button>
+            <button
+              onClick={() => setActiveTab('Cleared')}
+              className={`px-4 py-1.5 text-sm font-medium rounded-md transition-all ${activeTab === 'Cleared'
+                  ? 'bg-white dark:bg-zinc-700 text-zinc-900 dark:text-zinc-100 shadow-sm'
+                  : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-300'
+                }`}
+            >
+              Cleared
+            </button>
+          </div>
+
           <button
-            onClick={() => setActiveTab('Pending')}
-            className={`px-4 py-1.5 text-sm font-medium rounded-md transition-all ${activeTab === 'Pending'
-                ? 'bg-white dark:bg-zinc-700 text-zinc-900 dark:text-zinc-100 shadow-sm'
-                : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-300'
-              }`}
+            onClick={() => setIsIssueModalOpen(true)}
+            className="btn btn-primary"
           >
-            Pending
-          </button>
-          <button
-            onClick={() => setActiveTab('Cleared')}
-            className={`px-4 py-1.5 text-sm font-medium rounded-md transition-all ${activeTab === 'Cleared'
-                ? 'bg-white dark:bg-zinc-700 text-zinc-900 dark:text-zinc-100 shadow-sm'
-                : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-300'
-              }`}
-          >
-            Cleared
+            <svg className="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+            </svg>
+            Add Cheque
           </button>
         </div>
       </header>
@@ -256,6 +303,71 @@ export default function ChequeHistory() {
             </button>
           </div>
         </div>
+      </Modal>
+
+      {/* ── Issue Cheque Modal ── */}
+      <Modal isOpen={isIssueModalOpen} onClose={() => setIsIssueModalOpen(false)} title="Issue New Cheque">
+        <form onSubmit={handleIssueCheque} className="mt-4 space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="mb-1.5 block text-xs font-medium text-zinc-500 dark:text-zinc-400">Date</label>
+              <input
+                type="date"
+                className="input"
+                value={chqDate}
+                onChange={(e) => setChqDate(e.target.value)}
+                required
+              />
+            </div>
+            <div>
+              <label className="mb-1.5 block text-xs font-medium text-zinc-500 dark:text-zinc-400">Cheque #</label>
+              <input
+                type="text"
+                className="input"
+                placeholder="e.g. 004521"
+                value={chqNumber}
+                onChange={(e) => setChqNumber(e.target.value)}
+                required
+              />
+            </div>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="mb-1.5 block text-xs font-medium text-zinc-500 dark:text-zinc-400">Payee Name</label>
+              <input
+                type="text"
+                className="input"
+                placeholder="e.g. KSEB, Rent"
+                value={chqPayee}
+                onChange={(e) => setChqPayee(e.target.value)}
+                required
+              />
+            </div>
+            <div>
+              <label className="mb-1.5 block text-xs font-medium text-zinc-500 dark:text-zinc-400">Amount (Rs.)</label>
+              <input
+                type="number"
+                className="input"
+                placeholder="0.00"
+                min="0.01"
+                step="0.01"
+                value={chqAmount}
+                onChange={(e) => setChqAmount(e.target.value)}
+                required
+              />
+            </div>
+          </div>
+          <button
+            type="submit"
+            className="btn btn-primary w-full mt-4"
+            disabled={issueCheque.isPending}
+          >
+            {issueCheque.isPending ? (
+              <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-zinc-400/30 border-t-zinc-400" />
+            ) : null}
+            {issueCheque.isPending ? 'Issuing…' : 'Add Cheque'}
+          </button>
+        </form>
       </Modal>
 
     </div>

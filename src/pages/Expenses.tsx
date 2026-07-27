@@ -75,8 +75,8 @@ export default function Expenses() {
         updates: {
           date: editDate,
           amount: parseFloat(editAmount),
-          category: editCategory || null,
-          notes: editNotes || null,
+          category: editCategory || undefined,
+          notes: editNotes || undefined,
         }
       },
       {

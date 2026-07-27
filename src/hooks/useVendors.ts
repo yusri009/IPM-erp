@@ -88,7 +88,7 @@ const IMAGE_COMPRESSION_OPTIONS = {
 /**
  * Compress (images only) and upload a file to Supabase Storage.
  * Returns the final stored path string.
- * Throws a clear error if the bucket or RLS blocks the upload.
+ * Throws a clear error if the bucket, RLS, or compression fails.
  */
 async function uploadTransactionDocument(
   file: File,
@@ -101,9 +101,9 @@ async function uploadTransactionDocument(
   if (file.type.startsWith('image/')) {
     try {
       fileToUpload = await imageCompression(file, IMAGE_COMPRESSION_OPTIONS);
-    } catch (compressionErr) {
-      console.warn('[Upload] Compression failed, uploading original:', compressionErr);
-      fileToUpload = file; // Fall back to original if compression fails
+    } catch (compressionErr: any) {
+      console.error('[Upload] Compression failed:', compressionErr);
+      throw new Error(`Failed to compress image: ${compressionErr.message || 'Unknown error'}`);
     }
   }
 

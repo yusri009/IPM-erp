@@ -154,6 +154,10 @@ export interface DashboardSummary {
   totalExpenses: number;
   availableCash: number;
   totalPending: number;
+  currentMonthRevenue: number;
+  totalPayables: number;
+  totalProfit: number;
+  currentMonthProfit: number;
 }
 
 // ─── Vendor Payment Request ──────────────────────────────────

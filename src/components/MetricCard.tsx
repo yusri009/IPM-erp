@@ -4,7 +4,7 @@ interface MetricCardProps {
   label: string;
   value: string;
   icon: ReactNode;
-  accent: 'emerald' | 'blue' | 'amber' | 'rose';
+  accent: 'emerald' | 'blue' | 'amber' | 'rose' | 'teal' | 'orange' | 'violet' | 'indigo';
 }
 
 const accentStyles: Record<MetricCardProps['accent'], { text: string; glow: string; iconBg: string }> = {
@@ -27,6 +27,26 @@ const accentStyles: Record<MetricCardProps['accent'], { text: string; glow: stri
     text: 'text-rose-600 dark:text-rose-400',
     glow: 'glow-rose',
     iconBg: 'bg-rose-100/50 text-rose-600 dark:bg-rose-500/10 dark:text-rose-400',
+  },
+  teal: {
+    text: 'text-teal-600 dark:text-teal-400',
+    glow: 'glow-teal',
+    iconBg: 'bg-teal-100/50 text-teal-600 dark:bg-teal-500/10 dark:text-teal-400',
+  },
+  orange: {
+    text: 'text-orange-600 dark:text-orange-400',
+    glow: 'glow-orange',
+    iconBg: 'bg-orange-100/50 text-orange-600 dark:bg-orange-500/10 dark:text-orange-400',
+  },
+  violet: {
+    text: 'text-violet-600 dark:text-violet-400',
+    glow: 'glow-violet',
+    iconBg: 'bg-violet-100/50 text-violet-600 dark:bg-violet-500/10 dark:text-violet-400',
+  },
+  indigo: {
+    text: 'text-indigo-600 dark:text-indigo-400',
+    glow: 'glow-indigo',
+    iconBg: 'bg-indigo-100/50 text-indigo-600 dark:bg-indigo-500/10 dark:text-indigo-400',
   },
 };
 

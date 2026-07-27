@@ -29,7 +29,8 @@ export default function Vendors() {
   const recordInvoice = useRecordInvoice();
   const payVendor = usePayVendor();
 
-  // ── Add vendor form ──
+  // ── Add vendor modal ──
+  const [addVendorModal, setAddVendorModal] = useState(false);
   const [vendorName, setVendorName] = useState('');
 
   // ── Invoice modal ──
@@ -61,7 +62,10 @@ export default function Vendors() {
     e.preventDefault();
     if (!vendorName.trim()) return;
     addVendor.mutate({ name: vendorName.trim() }, {
-      onSuccess: () => setVendorName(''),
+      onSuccess: () => {
+        setVendorName('');
+        setAddVendorModal(false);
+      },
     });
   };
 
@@ -122,32 +126,19 @@ export default function Vendors() {
   return (
     <div className="space-y-8">
       {/* ── Page Header ── */}
-      <div className="animate-fade-in-up">
-        <h1 className="text-3xl font-bold text-zinc-900 dark:text-zinc-100">Vendors</h1>
-        <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
-          Manage wholesale vendors, invoices, and payments
-        </p>
-      </div>
-
-      {/* ── Add Vendor ── */}
-      <div className="glass-card animate-fade-in-up p-6">
-        <h2 className="mb-4 text-base font-semibold text-zinc-900 dark:text-zinc-200">
-          <span className="mr-2 inline-block h-2 w-2 rounded-full bg-sky-400" />
-          Add New Vendor
-        </h2>
-        <form onSubmit={handleAddVendor} className="flex gap-3">
-          <input
-            type="text"
-            className="input flex-1"
-            placeholder="Vendor name, e.g. Reliance Fresh Supply"
-            value={vendorName}
-            onChange={(e) => setVendorName(e.target.value)}
-            required
-          />
-          <button type="submit" className="btn btn-primary" disabled={addVendor.isPending}>
-            {addVendor.isPending ? 'Adding…' : 'Add Vendor'}
-          </button>
-        </form>
+      <div className="animate-fade-in-up flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-bold text-zinc-900 dark:text-zinc-100">Vendors</h1>
+          <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
+            Manage wholesale vendors, invoices, and payments
+          </p>
+        </div>
+        <button
+          className="btn btn-primary shadow-sm"
+          onClick={() => setAddVendorModal(true)}
+        >
+          + Add Vendor
+        </button>
       </div>
 
       {/* ── Vendor Table ── */}
@@ -470,6 +461,43 @@ export default function Vendors() {
               disabled={payVendor.isPending}
             >
               {payVendor.isPending ? 'Processing…' : 'Submit Payment'}
+            </button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* ── Add Vendor Modal ── */}
+      <Modal
+        open={addVendorModal}
+        onClose={() => setAddVendorModal(false)}
+        title="Add New Vendor"
+      >
+        <form onSubmit={handleAddVendor} className="space-y-4">
+          <div>
+            <label className="mb-1.5 block text-xs font-medium text-zinc-500 dark:text-zinc-400">Vendor Name</label>
+            <input
+              type="text"
+              className="input w-full"
+              placeholder="e.g. Reliance Fresh Supply"
+              value={vendorName}
+              onChange={(e) => setVendorName(e.target.value)}
+              required
+            />
+          </div>
+          <div className="flex gap-3 pt-2">
+            <button
+              type="button"
+              className="btn btn-secondary flex-1"
+              onClick={() => setAddVendorModal(false)}
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="btn btn-primary flex-1"
+              disabled={addVendor.isPending}
+            >
+              {addVendor.isPending ? 'Adding…' : 'Add Vendor'}
             </button>
           </div>
         </form>

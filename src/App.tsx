@@ -37,7 +37,7 @@ function Sidebar({ isMobileMenuOpen, setIsMobileMenuOpen }: { isMobileMenuOpen: 
       {/* Logo */}
       <div className="flex items-center gap-3 px-6 py-6">
         <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-500 to-sky-500 text-sm font-bold text-white shadow-lg shadow-emerald-500/20">
-          IP
+          IPM
         </div>
         <div>
           <h1 className="text-sm font-bold text-zinc-900 dark:text-zinc-100">IPM ERP</h1>

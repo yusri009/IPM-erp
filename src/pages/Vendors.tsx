@@ -46,6 +46,10 @@ export default function Vendors() {
   const [paymentDate, setPaymentDate] = useState(todayISO());
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('Cash');
   const [paymentChequeNum, setPaymentChequeNum] = useState('');
+  const [paymentFile, setPaymentFile] = useState<File | null>(null);
+
+  // ── Invoice file ──
+  const [invoiceFile, setInvoiceFile] = useState<File | null>(null);
 
   // ── Transaction history ──
   const [historyVendor, setHistoryVendor] = useState<WholesaleVendor | null>(null);
@@ -66,6 +70,7 @@ export default function Vendors() {
     setInvoiceAmount('');
     setInvoiceDate(todayISO());
     setInvoiceNotes('');
+    setInvoiceFile(null);
     setInvoiceModal(true);
   };
 
@@ -79,6 +84,7 @@ export default function Vendors() {
         amount: parseFloat(invoiceAmount),
         date: invoiceDate,
         notes: invoiceNotes || undefined,
+        file: invoiceFile ?? undefined,
       },
       { onSuccess: () => setInvoiceModal(false) }
     );
@@ -90,6 +96,7 @@ export default function Vendors() {
     setPaymentDate(todayISO());
     setPaymentMethod('Cash');
     setPaymentChequeNum('');
+    setPaymentFile(null);
     setPaymentModal(true);
   };
 
@@ -106,6 +113,7 @@ export default function Vendors() {
         date: paymentDate,
         method: paymentMethod,
         chequeNumber: paymentMethod === 'Cheque' ? paymentChequeNum : undefined,
+        file: paymentFile ?? undefined,
       },
       { onSuccess: () => setPaymentModal(false) }
     );
@@ -311,6 +319,20 @@ export default function Vendors() {
               onChange={(e) => setInvoiceNotes(e.target.value)}
             />
           </div>
+          <div>
+            <label className="mb-1.5 block text-xs font-medium text-zinc-500 dark:text-zinc-400">
+              Attach Document <span className="text-zinc-400">(optional)</span>
+            </label>
+            <input
+              type="file"
+              accept="image/*,application/pdf"
+              className="block w-full text-sm text-zinc-500 dark:text-zinc-400 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-emerald-50 file:text-emerald-600 hover:file:bg-emerald-100 dark:file:bg-emerald-500/10 dark:file:text-emerald-400 cursor-pointer"
+              onChange={(e) => setInvoiceFile(e.target.files?.[0] ?? null)}
+            />
+            {invoiceFile && (
+              <p className="mt-1.5 text-xs text-zinc-500 dark:text-zinc-400">📎 {invoiceFile.name}</p>
+            )}
+          </div>
           <div className="flex gap-3 pt-2">
             <button
               type="button"
@@ -417,6 +439,22 @@ export default function Vendors() {
               </p>
             </div>
           )}
+
+          {/* Attach document */}
+          <div>
+            <label className="mb-1.5 block text-xs font-medium text-zinc-500 dark:text-zinc-400">
+              Attach Document <span className="text-zinc-400">(optional)</span>
+            </label>
+            <input
+              type="file"
+              accept="image/*,application/pdf"
+              className="block w-full text-sm text-zinc-500 dark:text-zinc-400 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-sky-50 file:text-sky-600 hover:file:bg-sky-100 dark:file:bg-sky-500/10 dark:file:text-sky-400 cursor-pointer"
+              onChange={(e) => setPaymentFile(e.target.files?.[0] ?? null)}
+            />
+            {paymentFile && (
+              <p className="mt-1.5 text-xs text-zinc-500 dark:text-zinc-400">📎 {paymentFile.name}</p>
+            )}
+          </div>
 
           <div className="flex gap-3 pt-2">
             <button

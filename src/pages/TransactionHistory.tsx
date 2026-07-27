@@ -1,6 +1,32 @@
 import { useState } from 'react';
-import { useTransactions } from '@/hooks/useTransactions';
+import { useTransactions, useTransactionDocumentUrl } from '@/hooks/useTransactions';
 import { useVendors } from '@/hooks/useVendors';
+
+/** Fetches a signed URL on-demand and opens it in a new tab or shows it in a modal. */
+function DocumentButton({ path }: { path: string }) {
+  const [open, setOpen] = useState(false);
+  const { data: url, isLoading } = useTransactionDocumentUrl(open ? path : null);
+
+  const handleClick = () => {
+    setOpen(true);
+  };
+
+  // Once URL is ready, open in new tab and reset
+  if (open && url) {
+    window.open(url, '_blank', 'noopener,noreferrer');
+    setOpen(false);
+  }
+
+  return (
+    <button
+      onClick={handleClick}
+      disabled={isLoading}
+      className="btn btn-sm bg-violet-50 text-violet-600 hover:bg-violet-100 dark:bg-violet-500/10 dark:text-violet-400 dark:hover:bg-violet-500/20 border-transparent shadow-none"
+    >
+      {isLoading ? '…' : 'View Doc'}
+    </button>
+  );
+}
 
 export default function TransactionHistory() {
   const [filterVendorId, setFilterVendorId] = useState('');
@@ -83,18 +109,19 @@ export default function TransactionHistory() {
                 <th className="px-6 py-4 font-medium text-zinc-600 dark:text-zinc-300">Method</th>
                 <th className="px-6 py-4 font-medium text-zinc-600 dark:text-zinc-300 text-right">Amount</th>
                 <th className="px-6 py-4 font-medium text-zinc-600 dark:text-zinc-300">Notes</th>
+                <th className="px-6 py-4 font-medium text-zinc-600 dark:text-zinc-300">Doc</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-200/60 dark:divide-zinc-800/60">
               {isLoading ? (
                 <tr>
-                  <td colSpan={6} className="px-6 py-12 text-center text-zinc-500">
+                  <td colSpan={7} className="px-6 py-12 text-center text-zinc-500">
                     <span className="inline-block h-6 w-6 animate-spin rounded-full border-2 border-zinc-600 border-t-zinc-300" />
                   </td>
                 </tr>
               ) : !transactions?.length ? (
                 <tr>
-                  <td colSpan={6} className="px-6 py-12 text-center text-zinc-500">
+                  <td colSpan={7} className="px-6 py-12 text-center text-zinc-500">
                     No transactions found for the selected filters.
                   </td>
                 </tr>
@@ -126,6 +153,13 @@ export default function TransactionHistory() {
                     </td>
                     <td className="px-6 py-4 text-zinc-500 dark:text-zinc-400 max-w-[200px] truncate">
                       {txn.notes || '-'}
+                    </td>
+                    <td className="px-6 py-4">
+                      {txn.document_path ? (
+                        <DocumentButton path={txn.document_path} />
+                      ) : (
+                        <span className="text-xs text-zinc-400">—</span>
+                      )}
                     </td>
                   </tr>
                 ))

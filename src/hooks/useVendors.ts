@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
 import { useTenantId } from '@/lib/auth';
+import imageCompression from 'browser-image-compression';
 import type {
   WholesaleVendor,
   VendorTransaction,
@@ -77,6 +78,54 @@ export function useAddVendor() {
   });
 }
 
+/** Compression settings for attached receipt/invoice images. */
+const IMAGE_COMPRESSION_OPTIONS = {
+  maxSizeMB: 0.5,          // Raised to 0.5 MB for better compatibility
+  maxWidthOrHeight: 1200,
+  useWebWorker: false,      // Disabled — web worker causes hangs in many environments
+};
+
+/**
+ * Compress (images only) and upload a file to Supabase Storage.
+ * Returns the final stored path string.
+ * Throws a clear error if the bucket or RLS blocks the upload.
+ */
+async function uploadTransactionDocument(
+  file: File,
+  tenantId: string,
+  recordId: string
+): Promise<string> {
+  let fileToUpload: File | Blob = file;
+
+  // Only compress images — skip PDFs
+  if (file.type.startsWith('image/')) {
+    try {
+      fileToUpload = await imageCompression(file, IMAGE_COMPRESSION_OPTIONS);
+    } catch (compressionErr) {
+      console.warn('[Upload] Compression failed, uploading original:', compressionErr);
+      fileToUpload = file; // Fall back to original if compression fails
+    }
+  }
+
+  const timestamp = Date.now();
+  const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+  const filePath = `${tenantId}/${recordId}/${timestamp}_${safeName}`;
+
+  const { error } = await supabase.storage
+    .from('transaction-documents')
+    .upload(filePath, fileToUpload, {
+      upsert: false,
+      contentType: file.type || 'application/octet-stream',
+    });
+
+  if (error) {
+    console.error('[Upload] Supabase storage error:', error);
+    throw new Error(`Document upload failed: ${error.message}`);
+  }
+
+  return filePath;
+}
+
 /** Mutation: record an invoice — increases vendor's balance_owed (stamps tenant_id). */
 export function useRecordInvoice() {
   const queryClient = useQueryClient();
@@ -84,8 +133,8 @@ export function useRecordInvoice() {
 
   return useMutation({
     mutationFn: async (req: VendorInvoiceRequest) => {
-      // 1. Insert the transaction record
-      const { error: txErr } = await supabase
+      // 1. Insert the transaction record (return id for file path)
+      const { data: txRecord, error: txErr } = await supabase
         .from('vendor_transactions')
         .insert({
           tenant_id: tenantId,
@@ -95,11 +144,22 @@ export function useRecordInvoice() {
           payment_method: null,
           amount: req.amount,
           notes: req.notes ?? null,
-        });
+        })
+        .select('id')
+        .single();
 
-      if (txErr) throw txErr;
+      if (txErr || !txRecord) throw txErr ?? new Error('Failed to create transaction');
 
-      // 2. Increment balance_owed
+      // 2. If file provided — compress, upload, store path
+      if (req.file) {
+        const docPath = await uploadTransactionDocument(req.file, tenantId, txRecord.id);
+        await supabase
+          .from('vendor_transactions')
+          .update({ document_path: docPath })
+          .eq('id', txRecord.id);
+      }
+
+      // 3. Increment balance_owed
       const { data: vendor, error: fetchErr } = await supabase
         .from('wholesale_vendors')
         .select('balance_owed')
@@ -138,8 +198,8 @@ export function usePayVendor() {
     mutationFn: async (req: VendorPaymentRequest) => {
       if (req.method === 'Cash') {
         // ── Cash Payment ──
-        // 1. Insert transaction
-        const { error: txErr } = await supabase
+        // 1. Insert transaction (return id for file path)
+        const { data: txRecord, error: txErr } = await supabase
           .from('vendor_transactions')
           .insert({
             tenant_id: tenantId,
@@ -148,11 +208,22 @@ export function usePayVendor() {
             type: 'Payment' as const,
             payment_method: 'Cash' as const,
             amount: req.amount,
-          });
+          })
+          .select('id')
+          .single();
 
-        if (txErr) throw txErr;
+        if (txErr || !txRecord) throw txErr ?? new Error('Failed to create transaction');
 
-        // 2. Deduct from balance_owed
+        // 2. If file provided — compress, upload, store path
+        if (req.file) {
+          const docPath = await uploadTransactionDocument(req.file, tenantId, txRecord.id);
+          await supabase
+            .from('vendor_transactions')
+            .update({ document_path: docPath })
+            .eq('id', txRecord.id);
+        }
+
+        // 3. Deduct from balance_owed
         const { data: vendor, error: fetchErr } = await supabase
           .from('wholesale_vendors')
           .select('balance_owed')
@@ -191,8 +262,8 @@ export function usePayVendor() {
 
         if (chequeErr || !cheque) throw chequeErr ?? new Error('Failed to create cheque');
 
-        // 2. Insert transaction with cheque reference
-        const { error: txErr } = await supabase
+        // 2. Insert transaction with cheque reference (return id for file path)
+        const { data: txRecord, error: txErr } = await supabase
           .from('vendor_transactions')
           .insert({
             tenant_id: tenantId,
@@ -202,9 +273,20 @@ export function usePayVendor() {
             payment_method: 'Cheque' as const,
             amount: req.amount,
             cheque_id: cheque.id,
-          });
+          })
+          .select('id')
+          .single();
 
-        if (txErr) throw txErr;
+        if (txErr || !txRecord) throw txErr ?? new Error('Failed to create transaction');
+
+        // 3. If file provided — compress, upload, store path
+        if (req.file) {
+          const docPath = await uploadTransactionDocument(req.file, tenantId, txRecord.id);
+          await supabase
+            .from('vendor_transactions')
+            .update({ document_path: docPath })
+            .eq('id', txRecord.id);
+        }
 
         // Note: balance_owed is NOT decremented here.
         // It will be decremented when the cheque is cleared via useClearCheque.

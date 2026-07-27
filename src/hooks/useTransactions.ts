@@ -47,3 +47,25 @@ export function useTransactions(vendorId?: string, date?: string) {
     enabled: !!tenantId,
   });
 }
+
+/**
+ * Fetch a temporary signed URL (60s) for a stored transaction document.
+ * Pass null/undefined to skip fetching.
+ */
+export function useTransactionDocumentUrl(path?: string | null) {
+  return useQuery({
+    queryKey: ['transaction-document-url', path],
+    queryFn: async () => {
+      if (!path) return null;
+      const { data, error } = await supabase.storage
+        .from('transaction-documents')
+        .createSignedUrl(path, 60);
+      if (error) throw error;
+      return data.signedUrl;
+    },
+    enabled: !!path,
+    // Don't cache signed URLs beyond their 55s expiry
+    staleTime: 55 * 1000,
+    gcTime: 60 * 1000,
+  });
+}

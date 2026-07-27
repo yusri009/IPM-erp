@@ -78,6 +78,7 @@ export interface VendorTransaction {
   amount: number;
   cheque_id: string | null;
   notes: string | null;
+  document_path: string | null;
   created_at: string;
 }
 
@@ -141,6 +142,7 @@ export interface VendorTransactionInsert {
   amount: number;
   cheque_id?: string | null;
   notes?: string;
+  document_path?: string | null;
 }
 
 // ─── Dashboard Summary ──────────────────────────────────────
@@ -163,6 +165,7 @@ export interface VendorPaymentRequest {
   date: string;
   method: PaymentMethod;
   chequeNumber?: string;
+  file?: File;
 }
 
 // ─── Vendor Invoice Request ──────────────────────────────────
@@ -172,4 +175,5 @@ export interface VendorInvoiceRequest {
   amount: number;
   date: string;
   notes?: string;
+  file?: File;
 }

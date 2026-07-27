@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
 import { useStatisticsData } from '@/hooks/useStatistics';
 import { MetricCard } from '@/components/MetricCard';
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, Legend } from 'recharts';
+import { XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, Legend } from 'recharts';
 
 type ViewMode = 'Daily' | 'Monthly' | 'Yearly' | 'All-Time';
 
@@ -33,7 +33,6 @@ export default function Statistics() {
 
     const getGroupKey = (dateStr: string) => {
       if (!dateStr) return 'Unknown';
-      const d = new Date(dateStr);
       if (viewMode === 'Daily') return dateStr;
       if (viewMode === 'Monthly') return dateStr.slice(0, 7); // YYYY-MM
       if (viewMode === 'Yearly') return dateStr.slice(0, 4);  // YYYY

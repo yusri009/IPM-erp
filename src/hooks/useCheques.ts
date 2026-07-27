@@ -207,3 +207,38 @@ export function useUpdateCheque() {
     },
   });
 }
+
+/** Mutation: delete a pending cheque. */
+export function useDeleteCheque() {
+  const queryClient = useQueryClient();
+  const tenantId = useTenantId();
+
+  return useMutation({
+    mutationFn: async (id: string) => {
+      // First verify it's not cleared
+      const { data: cheque, error: checkErr } = await supabase
+        .from('outbound_cheques')
+        .select('status')
+        .eq('id', id)
+        .eq('tenant_id', tenantId)
+        .single();
+
+      if (checkErr || !cheque) throw checkErr ?? new Error('Cheque not found');
+      if (cheque.status !== 'Pending') {
+        throw new Error('Only pending cheques can be deleted.');
+      }
+
+      const { error } = await supabase
+        .from('outbound_cheques')
+        .delete()
+        .eq('id', id)
+        .eq('tenant_id', tenantId);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: chequeKeys.all });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+    },
+  });
+}

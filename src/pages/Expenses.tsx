@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react';
-import { useExpenses, useAddExpense } from '@/hooks/useExpenses';
+import { useExpenses, useAddExpense, useUpdateExpense, useDeleteExpense } from '@/hooks/useExpenses';
+import type { Expense } from '@/lib/types';
 import { Modal } from '@/components/Modal';
 
 function formatCurrency(amount: number): string {
@@ -18,12 +19,28 @@ function todayISO(): string {
 export default function Expenses() {
   const { data: expenses, isLoading } = useExpenses();
   const addExpense = useAddExpense();
+  const updateExpense = useUpdateExpense();
+  const deleteExpense = useDeleteExpense();
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [date, setDate] = useState(todayISO());
   const [amount, setAmount] = useState('');
   const [category, setCategory] = useState('');
   const [notes, setNotes] = useState('');
+
+  const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
+  const [editDate, setEditDate] = useState('');
+  const [editAmount, setEditAmount] = useState('');
+  const [editCategory, setEditCategory] = useState('');
+  const [editNotes, setEditNotes] = useState('');
+
+  const handleEditClick = (expense: Expense) => {
+    setEditingExpense(expense);
+    setEditDate(expense.date);
+    setEditAmount(expense.amount.toString());
+    setEditCategory(expense.category || '');
+    setEditNotes(expense.notes || '');
+  };
 
   const handleAddExpense = (e: FormEvent) => {
     e.preventDefault();
@@ -46,6 +63,35 @@ export default function Expenses() {
         },
       }
     );
+  };
+
+  const handleUpdateExpense = (e: FormEvent) => {
+    e.preventDefault();
+    if (!editingExpense || !editAmount) return;
+
+    updateExpense.mutate(
+      {
+        id: editingExpense.id,
+        updates: {
+          date: editDate,
+          amount: parseFloat(editAmount),
+          category: editCategory || null,
+          notes: editNotes || null,
+        }
+      },
+      {
+        onSuccess: () => setEditingExpense(null)
+      }
+    );
+  };
+
+  const handleDeleteExpense = () => {
+    if (!editingExpense) return;
+    if (window.confirm(`Are you sure you want to completely delete this expense of Rs. ${editingExpense.amount}?`)) {
+      deleteExpense.mutate(editingExpense.id, {
+        onSuccess: () => setEditingExpense(null)
+      });
+    }
   };
 
   return (
@@ -85,6 +131,7 @@ export default function Expenses() {
                   <th>Category</th>
                   <th>Notes</th>
                   <th>Amount</th>
+                  <th className="text-right">Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -94,6 +141,14 @@ export default function Expenses() {
                     <td className="font-medium text-zinc-900 dark:text-zinc-200">{expense.category || '—'}</td>
                     <td className="text-sm text-zinc-500 dark:text-zinc-400 max-w-[200px] truncate">{expense.notes || '—'}</td>
                     <td className="font-medium text-red-600 dark:text-red-400">-{formatCurrency(expense.amount)}</td>
+                    <td className="text-right">
+                      <button
+                        onClick={() => handleEditClick(expense)}
+                        className="btn btn-sm bg-emerald-50 text-emerald-600 hover:bg-emerald-100 dark:bg-emerald-500/10 dark:text-emerald-400 dark:hover:bg-emerald-500/20 border-transparent shadow-none"
+                      >
+                        Edit
+                      </button>
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -157,6 +212,81 @@ export default function Expenses() {
           >
             {addExpense.isPending ? 'Saving…' : 'Add Expense'}
           </button>
+        </form>
+      </Modal>
+
+      {/* ── Edit Expense Modal ── */}
+      <Modal open={!!editingExpense} onClose={() => setEditingExpense(null)} title="Edit Expense">
+        <form onSubmit={handleUpdateExpense} className="space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="mb-1.5 block text-xs font-medium text-zinc-500 dark:text-zinc-400">Date</label>
+              <input
+                type="date"
+                className="input"
+                value={editDate}
+                onChange={(e) => setEditDate(e.target.value)}
+                required
+              />
+            </div>
+            <div>
+              <label className="mb-1.5 block text-xs font-medium text-zinc-500 dark:text-zinc-400">Amount (Rs.)</label>
+              <input
+                type="number"
+                className="input"
+                placeholder="0.00"
+                min="0.01"
+                step="0.01"
+                value={editAmount}
+                onChange={(e) => setEditAmount(e.target.value)}
+                required
+              />
+            </div>
+          </div>
+          <div>
+            <label className="mb-1.5 block text-xs font-medium text-zinc-500 dark:text-zinc-400">Category</label>
+            <input
+              type="text"
+              className="input"
+              value={editCategory}
+              onChange={(e) => setEditCategory(e.target.value)}
+            />
+          </div>
+          <div>
+            <label className="mb-1.5 block text-xs font-medium text-zinc-500 dark:text-zinc-400">Notes (optional)</label>
+            <input
+              type="text"
+              className="input"
+              value={editNotes}
+              onChange={(e) => setEditNotes(e.target.value)}
+            />
+          </div>
+          <div className="flex justify-between items-center mt-6">
+            <button
+              type="button"
+              onClick={handleDeleteExpense}
+              disabled={deleteExpense.isPending}
+              className="btn bg-red-50 text-red-600 hover:bg-red-100 dark:bg-red-500/10 dark:text-red-500 dark:hover:bg-red-500/20 border-transparent shadow-none"
+            >
+              {deleteExpense.isPending ? 'Deleting...' : 'Delete Expense'}
+            </button>
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={() => setEditingExpense(null)}
+                className="btn bg-zinc-100 text-zinc-700 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={updateExpense.isPending || deleteExpense.isPending}
+                className="btn btn-primary"
+              >
+                {updateExpense.isPending ? 'Saving...' : 'Save Changes'}
+              </button>
+            </div>
+          </div>
         </form>
       </Modal>
     </div>

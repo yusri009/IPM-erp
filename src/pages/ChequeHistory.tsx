@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react';
-import { useCheques, useUpdateCheque, useReverseCheque, useClearCheque } from '@/hooks/useCheques';
+import { useCheques, useUpdateCheque, useReverseCheque, useClearCheque, useDeleteCheque } from '@/hooks/useCheques';
 import { Modal } from '@/components/Modal';
 import type { OutboundCheque } from '@/lib/types';
 
@@ -11,6 +11,7 @@ export default function ChequeHistory() {
   const updateCheque = useUpdateCheque();
   const reverseCheque = useReverseCheque();
   const clearCheque = useClearCheque();
+  const deleteCheque = useDeleteCheque();
 
   // Edit Modal State
   const [editingCheque, setEditingCheque] = useState<OutboundCheque | null>(null);
@@ -41,6 +42,17 @@ export default function ChequeHistory() {
         },
       }
     );
+  };
+
+  const handleDelete = () => {
+    if (!editingCheque) return;
+    if (window.confirm(`Are you sure you want to delete cheque #${editingCheque.cheque_number} for ${editingCheque.payee_name}?`)) {
+      deleteCheque.mutate(editingCheque.id, {
+        onSuccess: () => {
+          setEditingCheque(null);
+        }
+      });
+    }
   };
 
   const handleReverse = () => {
@@ -132,7 +144,11 @@ export default function ChequeHistory() {
                         </button>
                         <button
                           disabled={clearCheque.isPending}
-                          onClick={() => clearCheque.mutate(cheque.id)}
+                          onClick={() => {
+                            if (window.confirm(`Are you sure you want to mark cheque #${cheque.cheque_number} for ${cheque.payee_name} as cleared?`)) {
+                              clearCheque.mutate(cheque.id);
+                            }
+                          }}
                           className="btn btn-sm bg-sky-50 text-sky-600 hover:bg-sky-100 dark:bg-sky-500/10 dark:text-sky-400 dark:hover:bg-sky-500/20 border-transparent shadow-none"
                         >
                           Mark Cleared
@@ -182,21 +198,31 @@ export default function ChequeHistory() {
               onChange={(e) => setEditAmount(e.target.value)}
             />
           </div>
-          <div className="flex justify-end gap-3 mt-6">
+          <div className="flex justify-between items-center mt-6">
             <button
               type="button"
-              onClick={() => setEditingCheque(null)}
-              className="btn bg-zinc-100 text-zinc-700 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700"
+              onClick={handleDelete}
+              disabled={deleteCheque.isPending}
+              className="btn bg-red-50 text-red-600 hover:bg-red-100 dark:bg-red-500/10 dark:text-red-500 dark:hover:bg-red-500/20 border-transparent shadow-none"
             >
-              Cancel
+              {deleteCheque.isPending ? 'Deleting...' : 'Delete Cheque'}
             </button>
-            <button
-              type="submit"
-              disabled={updateCheque.isPending}
-              className="btn btn-primary"
-            >
-              {updateCheque.isPending ? 'Saving...' : 'Save Changes'}
-            </button>
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={() => setEditingCheque(null)}
+                className="btn bg-zinc-100 text-zinc-700 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={updateCheque.isPending || deleteCheque.isPending}
+                className="btn btn-primary"
+              >
+                {updateCheque.isPending ? 'Saving...' : 'Save Changes'}
+              </button>
+            </div>
           </div>
         </form>
       </Modal>
